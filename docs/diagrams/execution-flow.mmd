@@ -1,0 +1,40 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a90d9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2d5a87', 'lineColor': '#5c6bc0', 'secondaryColor': '#81c784', 'tertiaryColor': '#fff3e0'}}}%%
+sequenceDiagram
+    autonumber
+    participant User as User Code
+    participant Ctx as AutomationContext
+    participant Proxy as ModuleProxy
+    participant Exec as ModuleExecutor
+    participant Runner as Runner
+    participant SSH as SSHClient
+    participant Gate as Remote Gate
+
+    User->>Ctx: ftl.Execute("webservers", "dnf", args)
+    Ctx->>Proxy: Resolve hosts & module
+    Proxy-->>Ctx: []Host, ModuleConfig
+
+    Ctx->>Exec: Execute(hosts, module, args)
+
+    loop For each chunk of hosts
+        Exec->>Exec: Chunk hosts (default: 10)
+
+        par Parallel execution
+            Exec->>Runner: Run(host, module, args)
+
+            alt Local host
+                Runner->>Runner: Execute locally
+            else Remote host
+                Runner->>SSH: Connect(host)
+                SSH->>Gate: Deploy gate.pyz
+                Runner->>Gate: Send Module message
+                Gate->>Gate: Execute module
+                Gate-->>Runner: Result message
+            end
+
+            Runner-->>Exec: ModuleResult
+        end
+    end
+
+    Exec-->>Ctx: ExecutionResults
+    Ctx->>Ctx: Log audit, filter secrets
+    Ctx-->>User: Results

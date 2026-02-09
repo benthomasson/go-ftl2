@@ -1,0 +1,69 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a90d9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2d5a87', 'lineColor': '#5c6bc0', 'secondaryColor': '#81c784', 'tertiaryColor': '#fff3e0'}}}%%
+graph TB
+    subgraph cmd["cmd/"]
+        ftl2[ftl2/main.go<br/>CLI entrypoint]
+    end
+
+    subgraph pkg["pkg/"]
+        subgraph automation["automation/"]
+            context[context.go<br/>AutomationContext]
+            proxy[proxy.go<br/>ModuleProxy]
+            options[options.go<br/>Functional options]
+        end
+
+        subgraph executor["executor/"]
+            exec[executor.go<br/>ModuleExecutor]
+            runner[runner.go<br/>Runner interface]
+            local[local.go<br/>LocalRunner]
+            remote[remote.go<br/>RemoteRunner]
+        end
+
+        subgraph gate["gate/"]
+            builder[builder.go<br/>GateBuilder]
+            protocol[protocol.go<br/>Message protocol]
+            messages[messages.go<br/>Message types]
+        end
+
+        subgraph modules["modules/"]
+            ftlmod[ftl/]
+            loader[loader.go<br/>Module resolution]
+            bundle[bundle.go<br/>Bundling]
+            fqcn[fqcn.go<br/>FQCN parsing]
+        end
+
+        subgraph inventory["inventory/"]
+            inv[inventory.go<br/>Inventory loading]
+            host[host.go<br/>HostConfig]
+            group[group.go<br/>HostGroup]
+        end
+
+        subgraph state["state/"]
+            statemgr[state.go<br/>State manager]
+            file[file.go<br/>JSON persistence]
+            merge[merge.go<br/>State merging]
+        end
+
+        subgraph ssh["ssh/"]
+            client[client.go<br/>SSH client]
+            conn[connection.go<br/>Connection pool]
+        end
+
+        subgraph types["types/"]
+            config[config.go<br/>ExecutionConfig]
+            result[result.go<br/>ModuleResult]
+            errors[errors.go<br/>Error types]
+        end
+    end
+
+    ftl2 --> context
+    context --> exec
+    context --> inv
+    context --> statemgr
+    exec --> runner
+    runner --> local
+    runner --> remote
+    remote --> client
+    remote --> builder
+    builder --> protocol
+    loader --> fqcn
+    loader --> bundle

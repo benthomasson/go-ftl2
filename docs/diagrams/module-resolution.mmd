@@ -1,0 +1,63 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a90d9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2d5a87', 'lineColor': '#5c6bc0', 'secondaryColor': '#81c784', 'tertiaryColor': '#fff3e0'}}}%%
+flowchart TB
+    start([Module Request])
+
+    parse{Parse Module Name}
+
+    subgraph ftl["FTL Native Modules"]
+        ftlcheck{Is FTL Module?}
+        ftlexec[Execute FTL Module]
+    end
+
+    subgraph ansible["Ansible Module System"]
+        fqcn{Has FQCN?}
+        builtin[Resolve as builtin]
+        collection[Resolve collection]
+
+        subgraph loading["Module Loading"]
+            find[Find module file]
+            deps[Resolve dependencies]
+            bundle[Create bundle]
+        end
+
+        cache{Bundle cached?}
+        usecache[Use cached bundle]
+        newbundle[Build new bundle]
+    end
+
+    subgraph execution["Execution"]
+        local{Local host?}
+        subprocess[Execute subprocess]
+        gate[Send to gate]
+    end
+
+    result([Return ModuleResult])
+
+    start --> parse
+    parse --> ftlcheck
+
+    ftlcheck -->|Yes| ftlexec
+    ftlcheck -->|No| fqcn
+
+    fqcn -->|No| builtin
+    fqcn -->|Yes| collection
+
+    builtin --> find
+    collection --> find
+
+    find --> deps
+    deps --> bundle
+    bundle --> cache
+
+    cache -->|Yes| usecache
+    cache -->|No| newbundle
+
+    usecache --> local
+    newbundle --> local
+    ftlexec --> result
+
+    local -->|Yes| subprocess
+    local -->|No| gate
+
+    subprocess --> result
+    gate --> result

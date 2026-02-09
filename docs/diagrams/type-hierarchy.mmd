@@ -1,0 +1,90 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a90d9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2d5a87', 'lineColor': '#5c6bc0', 'secondaryColor': '#81c784', 'tertiaryColor': '#fff3e0'}}}%%
+classDiagram
+    class AutomationContext {
+        +Inventory inventory
+        +State state
+        +SecretsManager secrets
+        +ModuleExecutor executor
+        +Options options
+        +Execute(target, module, args) Results
+        +AddHost(name, config) error
+        +Close() error
+    }
+
+    class Inventory {
+        +map~string~HostGroup groups
+        +GetHosts(target) []Host
+        +GetHost(name) Host
+        +AddHost(name, config)
+    }
+
+    class HostGroup {
+        +string Name
+        +map~string~Host Hosts
+        +map~string~any Vars
+    }
+
+    class Host {
+        +string Name
+        +string Address
+        +int Port
+        +string User
+        +string PrivateKey
+        +map~string~any Vars
+        +IsLocal() bool
+    }
+
+    class ModuleExecutor {
+        +int ChunkSize
+        +Execute(hosts, module, args) Results
+    }
+
+    class Runner {
+        <<interface>>
+        +Run(ctx, host, module, args) Result
+    }
+
+    class LocalRunner {
+        +Run(ctx, host, module, args) Result
+    }
+
+    class RemoteRunner {
+        +SSHClient client
+        +GateBuilder builder
+        +Run(ctx, host, module, args) Result
+    }
+
+    class ExecutionConfig {
+        +string ModuleName
+        +map~string~any ModuleArgs
+        +bool DryRun
+        +bool Diff
+    }
+
+    class ModuleResult {
+        +bool Changed
+        +bool Failed
+        +string Msg
+        +map~string~any Data
+        +[]Warning Warnings
+    }
+
+    class State {
+        +map~string~HostState Hosts
+        +map~string~ResourceState Resources
+        +Add(key, value)
+        +Get(key) value
+        +Remove(key)
+        +Save() error
+    }
+
+    AutomationContext --> Inventory
+    AutomationContext --> State
+    AutomationContext --> ModuleExecutor
+    Inventory --> HostGroup
+    HostGroup --> Host
+    ModuleExecutor --> Runner
+    Runner <|.. LocalRunner
+    Runner <|.. RemoteRunner
+    ModuleExecutor --> ExecutionConfig
+    Runner --> ModuleResult

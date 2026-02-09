@@ -1,0 +1,32 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a90d9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2d5a87', 'lineColor': '#5c6bc0', 'secondaryColor': '#81c784', 'tertiaryColor': '#fff3e0'}}}%%
+sequenceDiagram
+    autonumber
+    participant Ctrl as Controller (Go)
+    participant SSH as SSH Connection
+    participant Gate as Gate Process (Python)
+    participant Mod as Module
+
+    Note over Ctrl,Gate: Message Format: [8-byte hex length][JSON body]
+
+    Ctrl->>SSH: Execute: python3 /tmp/gate-{hash}.pyz
+    SSH->>Gate: Start process
+    Gate-->>SSH: Hello message
+    SSH-->>Ctrl: {"type": "hello", "version": "1.0"}
+
+    rect rgb(230, 245, 230)
+        Note over Ctrl,Mod: Module Execution
+        Ctrl->>SSH: Module message
+        SSH->>Gate: {"type": "module", "name": "dnf", "args": {...}}
+        Gate->>Mod: Execute module
+        Mod-->>Gate: Result
+        Gate-->>SSH: Result message
+        SSH-->>Ctrl: {"type": "result", "changed": true, ...}
+    end
+
+    rect rgb(245, 230, 230)
+        Note over Ctrl,Gate: Shutdown
+        Ctrl->>SSH: Shutdown message
+        SSH->>Gate: {"type": "shutdown"}
+        Gate-->>SSH: Ack + close
+        SSH-->>Ctrl: Connection closed
+    end

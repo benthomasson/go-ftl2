@@ -1,0 +1,66 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a90d9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2d5a87', 'lineColor': '#5c6bc0', 'secondaryColor': '#81c784', 'tertiaryColor': '#fff3e0'}}}%%
+flowchart TB
+    subgraph input["Input"]
+        hosts["Hosts: [h1, h2, h3, h4, h5, h6, h7, h8]"]
+        chunk["ChunkSize: 3"]
+    end
+
+    subgraph chunking["Chunking"]
+        c1["Chunk 1: [h1, h2, h3]"]
+        c2["Chunk 2: [h4, h5, h6]"]
+        c3["Chunk 3: [h7, h8]"]
+    end
+
+    subgraph execution["Parallel Execution per Chunk"]
+        subgraph chunk1exec["Chunk 1 - Parallel"]
+            g1["goroutine: h1"]
+            g2["goroutine: h2"]
+            g3["goroutine: h3"]
+        end
+
+        subgraph chunk2exec["Chunk 2 - Parallel"]
+            g4["goroutine: h4"]
+            g5["goroutine: h5"]
+            g6["goroutine: h6"]
+        end
+
+        subgraph chunk3exec["Chunk 3 - Parallel"]
+            g7["goroutine: h7"]
+            g8["goroutine: h8"]
+        end
+    end
+
+    subgraph collection["Result Collection"]
+        wg1["sync.WaitGroup"]
+        chan1["chan ModuleResult"]
+        results["[]ModuleResult"]
+    end
+
+    subgraph control["Flow Control"]
+        errgroup["errgroup.Group"]
+        ctx["context.Context"]
+        cancel["Cancel on FailFast"]
+    end
+
+    hosts --> c1
+    hosts --> c2
+    hosts --> c3
+
+    c1 --> g1 & g2 & g3
+
+    g1 & g2 & g3 --> wg1
+    wg1 -->|Wait| c2
+
+    c2 --> g4 & g5 & g6
+    g4 & g5 & g6 --> wg1
+    wg1 -->|Wait| c3
+
+    c3 --> g7 & g8
+    g7 & g8 --> wg1
+
+    wg1 --> results
+
+    errgroup -.->|Controls| chunk1exec
+    errgroup -.->|Controls| chunk2exec
+    errgroup -.->|Controls| chunk3exec
+    ctx -.->|Cancellation| errgroup
