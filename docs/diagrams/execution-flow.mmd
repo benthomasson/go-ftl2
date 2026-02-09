@@ -1,40 +1,67 @@
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a90d9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2d5a87', 'lineColor': '#5c6bc0', 'secondaryColor': '#81c784', 'tertiaryColor': '#fff3e0'}}}%%
-sequenceDiagram
-    autonumber
-    participant User as User Code
-    participant Ctx as AutomationContext
-    participant Proxy as ModuleProxy
-    participant Exec as ModuleExecutor
-    participant Runner as Runner
-    participant SSH as SSHClient
-    participant Gate as Remote Gate
+flowchart TD
+    start([Execute Request])
 
-    User->>Ctx: ftl.Execute("webservers", "dnf", args)
-    Ctx->>Proxy: Resolve hosts & module
-    Proxy-->>Ctx: []Host, ModuleConfig
+    subgraph context["AutomationContext"]
+        resolve[Resolve target to hosts]
+        aggregate[Aggregate results]
+        audit[Filter secrets & audit log]
+    end
 
-    Ctx->>Exec: Execute(hosts, module, args)
+    subgraph executor["ModuleExecutor"]
+        chunk[Chunk hosts into groups of N]
 
-    loop For each chunk of hosts
-        Exec->>Exec: Chunk hosts (default: 10)
+        subgraph parallel["Parallel Goroutines"]
+            g1[Host 1]
+            g2[Host 2]
+            g3[Host N]
+        end
 
-        par Parallel execution
-            Exec->>Runner: Run(host, module, args)
+        collect[Collect chunk results]
+        next{More chunks?}
+    end
 
-            alt Local host
-                Runner->>Runner: Execute locally
-            else Remote host
-                Runner->>SSH: Connect(host)
-                SSH->>Gate: Deploy gate.pyz
-                Runner->>Gate: Send Module message
-                Gate->>Gate: Execute module
-                Gate-->>Runner: Result message
-            end
+    subgraph runners["Runner Selection"]
+        islocal{Local host?}
 
-            Runner-->>Exec: ModuleResult
+        subgraph local["LocalRunner"]
+            ftlcheck{FTL module?}
+            ftlexec[Execute Go function]
+            ansible[Execute Ansible subprocess]
+        end
+
+        subgraph remote["RemoteRunner"]
+            connect[SSH Connect]
+            deploy[Deploy gate.pyz]
+            send[Send Module message]
+            receive[Receive Result]
         end
     end
 
-    Exec-->>Ctx: ExecutionResults
-    Ctx->>Ctx: Log audit, filter secrets
-    Ctx-->>User: Results
+    result([Return ExecutionResults])
+
+    start --> resolve
+    resolve --> chunk
+    chunk --> g1 & g2 & g3
+    g1 & g2 & g3 --> islocal
+
+    islocal -->|Yes| ftlcheck
+    islocal -->|No| connect
+
+    ftlcheck -->|Yes| ftlexec
+    ftlcheck -->|No| ansible
+
+    connect --> deploy
+    deploy --> send
+    send --> receive
+
+    ftlexec --> collect
+    ansible --> collect
+    receive --> collect
+
+    collect --> next
+    next -->|Yes| chunk
+    next -->|No| aggregate
+
+    aggregate --> audit
+    audit --> result
