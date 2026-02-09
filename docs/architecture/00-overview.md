@@ -110,3 +110,4 @@ if err != nil {
 5. [Module System](05-module-system.md) - Module resolution and loading
 6. [State Management](06-state-management.md) - Persistent state tracking
 7. [Implementation Roadmap](07-implementation-roadmap.md) - Phased implementation plan
+8. [Concerns and Tradeoffs](08-concerns-and-tradeoffs.md) - Risks, limitations, and open questions
